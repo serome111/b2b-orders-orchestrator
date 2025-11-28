@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: b2b_orders
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/2_seed.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  customers-api:
+    build: ./customers-api
+    restart: unless-stopped
+    env_file:
+      - ./customers-api/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: b2b_orders
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npm start
+
+  orders-api:
+    build: ./orders-api
+    restart: unless-stopped
+    env_file:
+      - ./orders-api/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: b2b_orders
+      CUSTOMERS_API_BASE: http://customers-api:3001
+    ports:
+      - "3002:3002"
+    depends_on:
+      db:
+        condition: service_healthy
+      customers-api:
+        condition: service_started
+    command: npm start
+
+volumes:
+  db_data:

@@ -1,0 +1,28 @@
+service: lambda-orchestrator
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: us-east-1
+  environment:
+    CUSTOMERS_API_BASE: ${env:CUSTOMERS_API_BASE}
+    ORDERS_API_BASE: ${env:ORDERS_API_BASE}
+    SERVICE_TOKEN: ${env:SERVICE_TOKEN}
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3003
+    lambdaPort: 3005
+    host: 0.0.0.0
+
+functions:
+  createAndConfirmOrder:
+    handler: src/handler.createAndConfirmOrder
+    events:
+      - httpApi:
+          path: /orchestrator/create-and-confirm-order
+          method: post
